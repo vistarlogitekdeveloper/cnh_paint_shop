@@ -1,0 +1,81 @@
+name: cnh_paint_shop
+description: >-
+  CNH Paint Shop Operations — the plant's shortage tracker, automatic and in
+  everyone's pocket. Vistar Logitek Pvt. Ltd.
+publish_to: "none"
+version: 1.0.0+1
+
+environment:
+  sdk: ^3.12.2
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+  # ---- state management ----
+  # Riverpod without code generation. The generator buys little here — every
+  # provider in this app is a plain Notifier/FutureProvider — and skipping it
+  # keeps `flutter pub get && flutter run` as the whole setup story for a
+  # developer picking this up. Drift is the ONE thing that needs build_runner.
+  flutter_riverpod: ^2.6.1
+
+  # ---- routing ----
+  # Role-based guards live in the redirect; the router listens to auth state so
+  # a logged-out session can never leave a screen mounted.
+  go_router: ^14.6.2
+
+  # ---- networking ----
+  dio: ^5.7.0
+  # Connectivity drives the offline banner and triggers the queue flush.
+  connectivity_plus: ^6.1.0
+
+  # ---- local storage ----
+  # Drift (SQLite) for the offline queue + cached masters: the queue needs real
+  # transactions and indexed reads, which a key-value store cannot give.
+  drift: ^2.22.1
+  sqlite3_flutter_libs: ^0.5.26
+  path_provider: ^2.1.5
+  path: ^1.9.0
+  # Tokens go in the platform keystore, never in SharedPreferences.
+  flutter_secure_storage: ^9.2.2
+  shared_preferences: ^2.3.3
+
+  # ---- push ----
+  firebase_core: ^3.8.0
+  firebase_messaging: ^15.1.5
+  flutter_local_notifications: ^18.0.1
+
+  # ---- sharing / files ----
+  share_plus: ^10.1.2
+
+  # ---- ui ----
+  google_fonts: ^6.2.1
+  intl: ^0.20.1
+  # Two-way-locked scroll for the shortage matrix's sticky headers.
+  linked_scroll_controller: ^0.2.0
+  uuid: ^4.5.1
+  collection: ^1.19.0
+  file_picker: ^11.0.3
+  # Pallet photos on the nesting screen. Camera on Android/iOS/web; on Windows
+  # it falls back to the file dialog, which is what a desk terminal wants anyway.
+  # Downscaling is done by the picker itself (maxWidth + imageQuality) so a
+  # phone camera JPEG never reaches the 3 MB server cap.
+  image_picker: ^1.1.2
+  # Not used directly, but a transitive package registers CupertinoIcons in the
+  # font manifest; without the dependency every build warns about a missing font.
+  cupertino_icons: ^1.0.8
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^5.0.0
+  build_runner: ^2.4.13
+  drift_dev: ^2.22.1
+  # Used only by tool/process_logos.dart to key the logo backgrounds transparent.
+  image: ^4.3.0
+
+flutter:
+  uses-material-design: true
+  assets:
+    - assets/images/
+    - assets/patterns/
