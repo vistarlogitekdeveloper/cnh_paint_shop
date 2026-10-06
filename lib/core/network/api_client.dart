@@ -5,6 +5,7 @@ import 'package:flutter/foundation.dart';
 
 import '../config/env.dart';
 import '../storage/token_store.dart';
+import '../telemetry/telemetry.dart';
 import 'api_exception.dart';
 
 /// The typed HTTP client for the CNH Paint Shop module.
@@ -36,6 +37,14 @@ class ApiClient {
         onError: _onError,
       ),
     );
+
+    // Usage analytics: named actions and failed calls. Changes nothing about
+    // the request or its handling (core/telemetry/telemetry.dart). After the
+    // wrapper above, so it sees what that one passes on: a 4xx already turned
+    // into an error, and a request replayed after a token refresh counted
+    // once, on its replay. The bare Dio that refreshes the token is not
+    // covered.
+    _dio.interceptors.add(TelemetryInterceptor());
 
     if (Env.isDebug) {
       _dio.interceptors.add(

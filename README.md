@@ -245,3 +245,36 @@ flutter build apk --release --dart-define=API_BASE_URL=https://your-host
 The backend has its own suites — `npm run cnh:test` (coverage engine, no DB) and
 `npm run cnh:smoke` (93 end-to-end HTTP checks). Run those before blaming the client for a
 wrong number.
+
+---
+
+## Usage analytics (event tracker)
+
+`lib/core/telemetry/telemetry.dart`, using the in-house `vistar_event_tracker` SDK (vendored
+in `packages/`, see its `VENDORED.md`). Read in the Platform Console under Analytics > Event
+tracker.
+
+**Off unless the build gets both `ET_APP_ID` and `ET_WRITE_KEY`**; without them nothing is
+initialised and the app behaves exactly as before. To switch it on:
+
+- Register `paintshop_app` in the Platform Console, Settings > Event tracker, and copy its
+  write key.
+- Web (Cloudflare Workers Builds, project `cnh-paint-shop`): add the build variables
+  `ET_APP_ID=paintshop_app` and `ET_WRITE_KEY` under Settings > Build > Variables and secrets,
+  pasted with no leading space or newline. If the dashboard's build command is
+  `bash build.sh`, that is all: `build.sh` passes the two defines only when both are set. If
+  it is an inline `flutter build web ...` command instead, append
+  ` --dart-define=ET_APP_ID=$ET_APP_ID --dart-define=ET_WRITE_KEY=$ET_WRITE_KEY` to it.
+- APK: `flutter build apk --release --dart-define=ET_APP_ID=paintshop_app --dart-define=ET_WRITE_KEY=wk_...`
+
+Events go to the host of `API_BASE_URL` (a UAT build reports to UAT); `ET_BASE_URL`
+overrides it.
+
+Sent: screen views by route pattern (ids, machine serials and codes replaced), sign-in /
+sign-out (the user as `paintshop:<id>` with their role), named actions from successful
+writes (`nesting_recorded`, `pattern_run_recorded`, `machine_marked_built`,
+`request_approved`, ... see `_actions`), failed API calls (5xx / no connection) and client
+errors by type. Never sent: request or response bodies, names, employee codes, phone
+numbers, batch / lot / part numbers, machine serials, quantities, notes or photos. Nothing is
+awaited by a screen, an entry, a sign-in or a sign-out; start-up waits at most 2 s; the event
+queue is capped at 200.

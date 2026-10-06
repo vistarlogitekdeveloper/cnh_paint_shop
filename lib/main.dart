@@ -8,6 +8,7 @@ import 'core/config/env.dart';
 import 'core/db/app_database.dart';
 import 'core/push/push_service.dart';
 import 'core/storage/token_store.dart';
+import 'core/telemetry/telemetry.dart';
 import 'providers/providers.dart';
 
 /// Entry point.
@@ -44,6 +45,11 @@ Future<void> main() async {
     FlutterError.presentError(details);
     if (kReleaseMode) debugPrint('[error] ${details.exceptionAsString()}');
   };
+
+  // Usage analytics: off unless the build carries ET_APP_ID + ET_WRITE_KEY
+  // (lib/core/telemetry/telemetry.dart). Waits at most 2 s, never throws.
+  // After the error handler above, which its client-error capture chains to.
+  await Telemetry.init();
 
   runApp(
     ProviderScope(

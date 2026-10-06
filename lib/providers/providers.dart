@@ -9,6 +9,7 @@ import '../core/network/api_client.dart';
 import '../core/network/api_exception.dart';
 import '../core/storage/token_store.dart';
 import '../core/sync/sync_service.dart';
+import '../core/telemetry/telemetry.dart';
 import '../data/models/models.dart';
 import '../data/repositories/repositories.dart';
 
@@ -174,8 +175,12 @@ class AuthController extends Notifier<AuthState> {
       // Revalidate in the background; the cached session is good enough to
       // render with.
       Future.microtask(_revalidate);
+      final user = AppUser.fromJson(cached);
+      // Before the restored session reaches the router, so the screen it
+      // leads to is already theirs.
+      _identify(user);
       return AuthState(
-        user: AppUser.fromJson(cached),
+        user: user,
         status: AuthStatus.authenticated,
       );
     }
@@ -216,6 +221,8 @@ class AuthController extends Notifier<AuthState> {
       );
       await tokens.saveUser(result.user.toJson());
 
+      // Before the state change, so the screen it leads to is already theirs.
+      _identify(result.user);
       state = AuthState(
         user: result.user,
         lines: result.lines,
@@ -232,6 +239,10 @@ class AuthController extends Notifier<AuthState> {
       return false;
     }
   }
+
+  /// Usage analytics: who this is (id and role only). Fire and forget.
+  void _identify(AppUser user) =>
+      Telemetry.signedIn(userId: user.id, role: user.role.wire);
 
   /// Warm the offline cache and drain anything queued from a previous session.
   Future<void> _afterAuthenticated() async {
@@ -293,6 +304,8 @@ class AuthController extends Notifier<AuthState> {
   /// Called by the API client when a refresh finally fails.
   void onSessionExpired() {
     if (state.status != AuthStatus.unauthenticated) {
+      // A session the server has ended is a sign-out too (not awaited).
+      Telemetry.signedOut();
       state = const AuthState(
         status: AuthStatus.unauthenticated,
         error: 'Your session expired. Please sign in again.',
@@ -301,6 +314,9 @@ class AuthController extends Notifier<AuthState> {
   }
 
   Future<void> _clear() async {
+    // Sign-out, and a session /auth/me refused, for usage analytics. Not
+    // awaited.
+    if (state.isAuthenticated) Telemetry.signedOut();
     try {
       await ref.read(tokenStoreProvider).clearSession();
     } catch (error) {
