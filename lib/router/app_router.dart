@@ -19,6 +19,7 @@ import '../features/reports/reports_screen.dart';
 import '../features/requests/requests_screen.dart';
 import '../features/runs/runs_screen.dart';
 import '../features/shell/app_shell.dart';
+import '../core/telemetry/telemetry.dart';
 import '../features/sync/sync_queue_screen.dart';
 import '../providers/providers.dart';
 
@@ -76,6 +77,27 @@ const Map<String, String> _routePermissions = {
   Routes.admin: Perm.masterManage,
 };
 
+/// Reports each screen the router shows to usage analytics (by route
+/// pattern; see Telemetry.screen).
+GoRouter _withScreenViews(Ref ref, GoRouter router) {
+  if (!Telemetry.enabled) return router;
+  // The delegate, not the route-information provider: it also hears the
+  // location changes a redirect makes (sign-in landing on the role's screen).
+  void report() {
+    try {
+      Telemetry.screen(router.routerDelegate.currentConfiguration.uri.toString());
+    } catch (_) {
+      // No configuration yet; the next change reports.
+    }
+  }
+
+  router.routerDelegate.addListener(report);
+  ref.onDispose(() => router.routerDelegate.removeListener(report));
+  // The listener only hears changes: report the starting screen too.
+  WidgetsBinding.instance.addPostFrameCallback((_) => report());
+  return router;
+}
+
 /// Rebuilds the router when auth state flips, so a logout tears the shell down
 /// immediately instead of leaving a screen mounted over a dead session.
 final routerProvider = Provider<GoRouter>((ref) {
@@ -85,7 +107,7 @@ final routerProvider = Provider<GoRouter>((ref) {
   });
   ref.onDispose(notifier.dispose);
 
-  return GoRouter(
+  return _withScreenViews(ref, GoRouter(
     initialLocation: Routes.dashboard,
     refreshListenable: notifier,
     debugLogDiagnostics: false,
@@ -137,7 +159,7 @@ final routerProvider = Provider<GoRouter>((ref) {
       ),
     ],
     errorBuilder: (context, state) => _RouteNotFound(location: state.uri.toString()),
-  );
+  ));
 });
 
 /// Where a role belongs. Prefers the server-supplied route and falls back to a
